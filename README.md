@@ -19,4 +19,4 @@ Il est peu probable que le programme connaisse de nouvelles évolutions. Il faud
 
 Aujourd'hui la recherche sur Othello est au ralenti, voire à l'arrêt. La victoire de Logistello en 1997 contre Takeshi Murakami (alors champion du monde) sur un score sans appel de 6-0 a grandement éteint les travaux sur la programmation de ce jeu. Le code source de Logistello est disponible sur la page Web de son auteur, Michael Buro. 
 
-
+Il y a une interface en tcl/tk nommé board. Pour jouer, il suffit de lancer board.
