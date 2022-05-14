@@ -1,0 +1,420 @@
+#!/usr/bin/wish -f
+
+proc Drawdisc {w x y color size} {
+    set x1 [expr $x*$size+$size/4]
+    set y1 [expr $y*$size+$size/4]
+    set x2 [expr $x1+$size/2]
+    set y2 [expr $y1+$size/2]
+    set d [$w create oval $x1 $y1 $x2 $y2 -fill $color ]
+    return $d
+}
+
+proc CreateBoard {size} {
+    global coo_x
+    global coo_y
+    global square_xy
+    global valid
+    
+    set height [expr $size*8]
+    set width  [expr $size*8]
+    set w [canvas .c -width $width -height $height]
+    
+    for {set i 0} {$i< 8} {incr i} {
+	for {set j 0} {$j< 8} {incr j} {
+	    set x1 [expr $i*$size]
+	    set x2 [expr $x1+$size]
+	    set y1 [expr $j*$size]
+	    set y2 [expr $y1+$size]
+	    set o [$w create rect  $x1 $y1 $x2 $y2 -fill darkgreen]
+	    set coo_x($o) $i
+	    set coo_y($o) $j 
+	    set k [expr 10*$i+$j]
+	    set square_xy($k) $o
+    }   }
+    return $w
+}
+
+proc SetClickable {w} {
+    global square_xy
+    global valid
+
+    set ll [llength $valid]
+    for {set i 0} {$i< $ll} {incr i} {
+	set k [expr [lindex $valid $i]]
+	set o $square_xy($k)
+	$w itemconfigure $o -fill green  -tag clickable
+    }
+}
+
+proc SetNoClickable {w} {
+    global square_xy
+    global valid
+
+    set ll [llength $valid]
+    for {set i 0} {$i< $ll} {incr i} {
+	set k [expr [lindex $valid $i]]
+	set o $square_xy($k)
+	$w itemconfigure $o -fill darkgreen
+        $w dtag clickable
+    }
+}
+
+proc Drawboard {w size} {
+    global color_xy
+    global disc_xy
+
+    for {set i 0} {$i<8} {incr i} {
+	for {set j 0} {$j< 8} {incr j} {
+	    set k [expr 10*$i+$j]
+	    if [info exist color_xy($k)] {
+		if [info exist disc_xy($k)] {
+		    $w itemconfigure $disc_xy($k) -fill $color_xy($k)
+		} else {
+		    set disc_xy($k) [Drawdisc $w $i $j $color_xy($k) $size] 
+		}
+	    }
+	}
+    }
+}
+
+proc Waitstring {} {
+    global color_xy
+    global valid
+    global desc
+    global w
+    global size
+    global bscore
+    global wscore
+    global sb
+    global depth
+    global nummove
+    global leaf
+    global eval
+    global maxeval
+    global mineval
+    global bestmove
+    global besteval
+    global currleaf
+    global tr
+    global move
+
+    if [eof $desc] {
+	catch {close $desc}
+	return
+    }
+    set s [gets $desc]
+
+    set res [split $s _]
+    set hd [lindex $res 0]
+    switch -exact $hd {
+	pos {
+	    for {set i 0} {$i<8} {incr i} {
+		for {set j 0} {$j<8} {incr j} {
+		    set k [expr 10*$i+$j]
+		    set sq [lindex $res [expr 1+8*$j+$i]]
+		    if {$sq == "X"} {
+			set color_xy($k) black
+		    }
+		    if {$sq == "O"} {
+			set color_xy($k) white
+		    }
+		}
+	    }
+	    Drawboard $w $size
+	}
+	valid {
+	    set valid [lrange $res 1 [llength $res]]
+	    Drawboard $w $size
+	    SetClickable $w 
+	    $sb configure -state normal
+	}
+	score {
+	    set bscore [lindex $res 1]
+	    set wscore [lindex $res 2]
+	}
+	Eval {
+	    set depth  [lindex $res 1]
+	    set nummove  [lindex $res 2]
+	    set eval  [lindex $res 3]
+	    set mineval  [lindex $res 4]
+	    set maxeval  [lindex $res 5]
+	    set leaf  [lindex $res 6]
+	}
+	CoupEv {
+	    set bestmove  [lindex $res 1]
+	    set besteval  [lindex $res 2]
+	    set currleaf  [lindex $res 3]
+	}
+	Coup {
+	    set move  [lindex $res 1]
+	}
+	Time {
+	    set tr  [lindex $res 1]
+	}
+	fin  {
+	    $sb configure -state normal
+	}
+	default {
+	    puts $s
+	}
+    }
+}
+
+    
+proc GetCoo {x y w size desc} {
+    global coo_x
+    global coo_y
+    global disc_xy
+    global color_xy
+    global valid
+    global sb
+
+    $sb configure -state disabled
+    set o [$w find closest $x $y]
+    set nx $coo_x($o)
+    set ny $coo_y($o)
+    SetNoClickable $w
+    
+    set i [expr 10*$nx+$ny]
+    puts $desc [expr $i]
+    flush $desc
+}
+
+proc GetCoo2 {x y w} {
+
+    set o [$w find closest $x $y]
+    puts $x
+    puts $y
+
+}
+
+proc newgame {} {
+    global color_xy
+    global bscore
+    global wscore
+    global disc_xy
+    global desc
+    global w
+    global size
+    global sb
+    global rb1
+    global rb2
+    global le
+
+
+    SetNoClickable $w
+    for {set i 0} {$i<8} {incr i} {
+	for {set j 0} {$j< 8} {incr j} {
+	    set k [expr 10*$i+$j]
+	    if [info exist color_xy($k)] {
+		if [info exist disc_xy($k)] {
+		    $w delete $disc_xy($k) 
+		} 
+	    }
+	}
+    }
+    unset disc_xy
+    unset color_xy
+    $rb1 configure -state normal
+    $rb2 configure -state normal
+    $le configure -state normal
+    $sb configure -text Start -command {start $w $fcolor $size $rb1 $rb2 $le}
+    Drawboard $w $size
+    puts $desc fin
+    flush $desc
+    close $desc
+    unset desc
+}
+
+
+
+proc start {w fcolor size rb1 rb2 le} {
+    global color_xy
+    global valid
+    global bscore
+    global wscore
+    global level 
+    global desc
+    global sb
+
+    if {$level < 0} {
+	set level 1
+	return
+    }
+    if {$level > 60} {
+	set level 5
+	return
+    }
+    set color_xy(33) white
+    set color_xy(44) white
+    set color_xy(34) black
+    set color_xy(43) black
+    set bscore 2
+    set wscore 2
+    Drawboard $w $size
+
+    $sb configure -text NewGame -command newgame -state disabled
+    $rb1 configure -state disabled
+    $rb2 configure -state disabled
+    $le configure -state disabled
+
+    if [info exist desc] {
+	close $desc
+    }
+    set desc [open "|./a.out -tcltk" r+]
+    fileevent $desc readable Waitstring
+    
+    if {$fcolor == "black"} {
+	puts $desc H
+    } else {
+	puts $desc O}
+    flush $desc
+    puts $desc $level
+    flush $desc
+}
+
+set size 80
+set w [CreateBoard $size]
+
+set cp [frame .controlpanel -borderwidth 5]
+set sb2 [button $cp.exitbutton -text Exit -command exit]
+set sb [button $cp.startbutton -text Start -command {start $w $fcolor $size $rb1 $rb2 $le}]
+set rb1 [radiobutton $cp.rb1 -variable fcolor -text black -value black]
+set rb2 [radiobutton $cp.rb2 -variable fcolor -text white -value white]
+set lab1 [label $cp.lab1 -text "min/game:"]
+set le [entry $cp.le -textvariable level -relief sunken -width 2]
+set lab2 [label $cp.lab2 -text White:]
+set lab3 [label $cp.lab3 -width 2 -textvariable wscore]
+set lab4 [label $cp.lab4 -text Black:]
+set lab5 [label $cp.lab5 -width 2 -textvariable bscore]
+set lab5b [label $cp.lab5b -text Time:]
+set lab5t  [label $cp.lab5t -width 3 -textvariable tr]
+set lab51  [label $cp.lab51 -text Move:]
+set lab52  [label $cp.lab52 -width 2 -textvariable move]
+
+set ip [frame .infopanel -borderwidth 5]
+set lab6 [label $ip.lab6 -text Depth:]
+set lab7 [label $ip.lab7 -width 2 -textvariable depth]
+set lab8 [label $ip.lab8 -text Move:]
+set lab9 [label $ip.lab9 -width 2 -textvariable nummove]
+set lab10 [label $ip.lab10 -text Eval:]
+set lab11 [label $ip.lab11 -width 6 -textvariable eval]
+set lab12 [label $ip.lab12 -text MaxEval:]
+set lab13 [label $ip.lab13 -width 6 -textvariable maxeval]
+set lab14 [label $ip.lab14 -text MinEval:]
+set lab15 [label $ip.lab15 -width 6 -textvariable mineval]
+set lab16 [label $ip.lab16 -text Leaves:]
+set lab17 [label $ip.lab17 -width 7 -textvariable leaf]
+
+set ip2 [frame .infopanel2 -borderwidth 5]
+set lab18 [label $ip2.lab18 -text BestMove:]
+set lab19 [label $ip2.lab19 -width 6 -textvariable bestmove]
+set lab20 [label $ip2.lab20 -text BestEval:]
+set lab21 [label $ip2.lab21 -width 6 -textvariable besteval]
+set lab22 [label $ip2.lab22 -text Leaves:]
+set lab23 [label $ip2.lab23 -width 7 -textvariable currleaf]
+
+set ap [frame .alphapanel -borderwidth 5 -width [expr $size*8]]
+set labA [label $ap.labA -text A]
+set labB [label $ap.labB -text B]
+set labC [label $ap.labC -text C]
+set labD [label $ap.labD -text D]
+set labE [label $ap.labE -text E]
+set labF [label $ap.labF -text F]
+set labG [label $ap.labG -text G]
+set labH [label $ap.labH -text H]
+
+set np [frame .numpanel -borderwidth 5]
+set l1 [label $np.l1 -text 1]
+set l2 [label $np.l2 -text 2]
+set l3 [label $np.l3 -text 3]
+set l4 [label $np.l4 -text 4]
+set l5 [label $np.l5 -text 5]
+set l6 [label $np.l6 -text 6]
+set l7 [label $np.l7 -text 7]
+set l8 [label $np.l8 -text 8]
+
+
+set bestmove 0
+set besteval 0
+set currleaf 0
+
+set nummove 0
+set leaf 0
+set eval 0
+set mineval 0
+set maxeval 0
+set depth 0
+
+set fcolor black
+set level 1
+set bscore 0
+set wscore 0
+set tr 0
+
+pack $sb2 -side left
+pack $sb -side left
+pack $rb1 -side left
+pack $rb2 -side left
+pack $lab1 -side left
+pack $le -side left
+pack $lab2 -side left
+pack $lab3 -side left
+pack $lab4 -side left
+pack $lab5 -side left
+pack $lab5b -side left
+pack $lab5t -side left
+pack $lab51 -side left
+pack $lab52 -side left
+
+pack $lab6 -side left
+pack $lab7 -side left
+pack $lab8 -side left
+pack $lab9 -side left
+pack $lab10 -side left
+pack $lab11 -side left
+pack $lab12 -side left
+pack $lab13 -side left
+pack $lab14 -side left
+pack $lab15 -side left
+pack $lab16 -side left
+pack $lab17 -side left
+
+pack $lab18 -side left 
+pack $lab19 -side left 
+pack $lab20 -side left 
+pack $lab21 -side left 
+pack $lab22 -side left 
+pack $lab23 -side left 
+
+set pdx 32
+pack $labA -side left -padx $pdx
+pack $labB -side left -padx $pdx
+pack $labC -side left -padx $pdx
+pack $labD -side left -padx $pdx
+pack $labE -side left -padx $pdx
+pack $labF -side left -padx $pdx
+pack $labG -side left -padx $pdx
+pack $labH -side left -padx $pdx
+
+set pdy 30
+pack $l1 -pady $pdy 
+pack $l2 -pady $pdy 
+pack $l3 -pady $pdy
+pack $l4 -pady $pdy
+pack $l5  -pady $pdy
+pack $l6  -pady $pdy
+pack $l7  -pady $pdy
+pack $l8 -pady $pdy
+
+pack $cp
+pack $ip
+pack $ip2
+pack $ap
+pack $np -side left
+pack $w -side left
+
+$w bind clickable <Button-1> {GetCoo %x %y %W $size $desc}
+
+
+

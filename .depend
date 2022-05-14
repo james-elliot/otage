@@ -1,0 +1,14 @@
+alpha.o: alpha.c types.h osc.h alpha.h eval2.h table.h
+book.o: book.c types.h book.h valid.h
+client.o: client.c client.h client_util.i
+db.o: db.c
+encoder.o: encoder.c
+endgame.o: endgame.c types.h endgame.h
+eval2.o: eval2.c types.h eval2.h valid.h osc.h
+main.o: main.c types.h osc.h book.h client.h table.h
+osc.o: osc.c types.h osc.h valid.h search.h eval2.h book.h endgame.h \
+ table.h client.h
+search.o: search.c types.h alpha.h search.h endgame.h table.h
+sym.o: sym.c
+table.o: table.c table.h
+valid.o: valid.c valid.h types.h osc.h
