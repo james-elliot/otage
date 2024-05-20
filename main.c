@@ -1,7 +1,7 @@
 #include "types.h"
 #include "osc.h"
 #include "book.h"
-#define CLIENT
+
 #include "client.h"
 #include "table.h"
 #include "search.h"

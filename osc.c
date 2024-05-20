@@ -6,7 +6,7 @@
 #include "book.h"
 #include "endgame.h"
 #include "table.h"
-#define CLIENT
+
 #include "client.h"
 #include <stdio.h>
 
